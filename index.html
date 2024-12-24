@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小鸟飞行游戏</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #87CEEB;
+            flex-direction: column;
+        }
+        canvas {
+            border: 2px solid #000;
+            background-color: #87CEEB;
+            max-width: 100%;
+            max-height: 80vh;
+        }
+        #instructions {
+            margin-top: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <div id="instructions">
+        游戏说明：点击鼠标左键让小鸟飞行，躲避障碍物！
+    </div>
+    <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // 游戏状态
+    let gameStarted = false;
+    let gameOver = false;
+
+    // 鸟的属性
+    const bird = {
+        x: 50,
+        y: canvas.height / 2,
+        radius: 20,
+        velocity: 0,
+        gravity: 0.5,
+        jump: -8
+    };
+
+    // 障碍物属性
+    const pipes = [];
+    const PIPE_WIDTH = 50;
+    const PIPE_GAP = 150;
+    const PIPE_SPEED = 2;
+
+    // 分数
+    let score = 0;
+
+    // 初始化游戏
+    function init() {
+        bird.y = canvas.height / 2;
+        bird.velocity = 0;
+        pipes.length = 0;
+        score = 0;
+        gameOver = false;
+        gameStarted = false;
+    }
+
+    // 生成新的障碍物
+    function createPipe() {
+        const gapY = Math.random() * (canvas.height - PIPE_GAP - 100) + 50;
+        pipes.push({
+            x: canvas.width,
+            gapY: gapY,
+            passed: false
+        });
+    }
+
+    // 更新游戏状态
+    function update() {
+        if (!gameStarted || gameOver) return;
+
+        // 更新鸟的位置
+        bird.velocity += bird.gravity;
+        bird.y += bird.velocity;
+
+        // 检查碰撞
+        if (bird.y + bird.radius > canvas.height || bird.y - bird.radius < 0) {
+            gameOver = true;
+        }
+
+        // 更新障碍物
+        for (let i = pipes.length - 1; i >= 0; i--) {
+            pipes[i].x -= PIPE_SPEED;
+
+            // 检查通过障碍物
+            if (!pipes[i].passed && pipes[i].x + PIPE_WIDTH < bird.x) {
+                pipes[i].passed = true;
+                score++;
+            }
+
+            // 检查碰撞
+            if (bird.x + bird.radius > pipes[i].x && 
+                bird.x - bird.radius < pipes[i].x + PIPE_WIDTH) {
+                if (bird.y - bird.radius < pipes[i].gapY - PIPE_GAP/2 || 
+                    bird.y + bird.radius > pipes[i].gapY + PIPE_GAP/2) {
+                    gameOver = true;
+                }
+            }
+
+            // 移除超出屏幕的障碍物
+            if (pipes[i].x + PIPE_WIDTH < 0) {
+                pipes.splice(i, 1);
+            }
+        }
+
+        // 生成新的障碍物
+        if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 300) {
+            createPipe();
+        }
+    }
+
+    // 绘制游戏
+    function draw() {
+        // 清空画布
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 绘制鸟
+        ctx.beginPath();
+        ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#FFD700';
+        ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
+
+        // 绘制障碍物
+        pipes.forEach(pipe => {
+            // 上方障碍物
+            ctx.fillStyle = '#3CB371';
+            ctx.fillRect(pipe.x, 0, PIPE_WIDTH, pipe.gapY - PIPE_GAP/2);
+            // 下方障碍物
+            ctx.fillRect(pipe.x, pipe.gapY + PIPE_GAP/2, 
+                        PIPE_WIDTH, canvas.height - (pipe.gapY + PIPE_GAP/2));
+        });
+
+        // 绘制分数
+        ctx.fillStyle = '#000';
+        ctx.font = '24px Arial';
+        ctx.fillText(`分数: ${score}`, 10, 30);
+
+        // 绘制开始/结束信息
+        if (!gameStarted) {
+            ctx.fillStyle = '#000';
+            ctx.font = '30px Arial';
+            ctx.fillText('点击开始游戏', canvas.width/2 - 80, canvas.height/2);
+        } else if (gameOver) {
+            ctx.fillStyle = '#000';
+            ctx.font = '30px Arial';
+            ctx.fillText('游戏结束', canvas.width/2 - 60, canvas.height/2 - 30);
+            ctx.fillText(`最终分数: ${score}`, canvas.width/2 - 70, canvas.height/2 + 20);
+            ctx.font = '20px Arial';
+            ctx.fillText('点击重新开始', canvas.width/2 - 60, canvas.height/2 + 60);
+        }
+    }
+
+    // 游戏循环
+    function gameLoop() {
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+
+    // 事件监听
+    canvas.addEventListener('click', () => {
+        if (!gameStarted) {
+            gameStarted = true;
+        } else if (gameOver) {
+            init();
+        } else {
+            bird.velocity = bird.jump;
+        }
+    });
+
+    // 开始游戏
+    init();
+    gameLoop();
+    </script>
+</body>
+</html>
